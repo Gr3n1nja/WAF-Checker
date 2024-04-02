@@ -24,7 +24,7 @@ pip install requests
 Navigate to the directory containing the script and `urls.txt`, then run the following command:
 
 ```
-python3 waf_detection_script.py
+python3 waf_checker.py
 ```
 
 The script processes each URL from `urls.txt`, attempting to detect the WAF, and writes the results into `waf_detection_results.csv`.
