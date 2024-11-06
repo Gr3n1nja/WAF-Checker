@@ -1,11 +1,23 @@
+#!/usr/bin/env python3
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from urllib3.exceptions import InsecureRequestWarning
 import csv
+import sys
+import os
 
 # Suppress InsecureRequestWarning when verify=False
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+
+def show_help():
+    """Display the help menu."""
+    print("Usage: python waf_checker.py [input_file]\n")
+    print("Options:")
+    print("  input_file   Path to the file containing URLs (default: urls.txt)")
+    print("  -h, --help   Show this help message and exit\n")
+    print("Example:")
+    print("  python waf_checker.py urls.txt")
 
 def ensure_url_scheme(url):
     """Ensure the URL starts with http:// or https://."""
@@ -31,18 +43,14 @@ def requests_retry_session(retries=3, backoff_factor=0.3, status_forcelist=(500,
 
 def identify_waf_from_response(response):
     """Check the response for signs of Cloudflare or F5 Big-IP."""
-    # Cloudflare signature
     if "server" in response.headers and "cloudflare" in response.headers["server"].lower():
         return "Cloudflare"
     if "cf-ray" in response.headers:  # Specific to Cloudflare
         return "Cloudflare"
-    
-    # F5 Big-IP signature
     if "x-wa-info" in response.headers or "x-cnection" in response.headers:  # Indicative of F5
         return "F5 Big-IP"
     if "support id" in response.text.lower():  # Check response body for F5 Big-IP specific signature
         return "F5 Big-IP"
-
     return "Unknown"
 
 def detect_waf(url):
@@ -86,11 +94,25 @@ def write_results_to_csv(results, output_file):
         writer.writerow(["URL", "WAF Status"])
         writer.writerows(results)
 
-# File paths
-input_file = 'urls.txt'
-output_file = 'waf_detection_results.csv'
+# Main function
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        if sys.argv[1] in ('-h', '--help'):
+            show_help()
+            sys.exit(0)
+        input_file = sys.argv[1]
+    else:
+        input_file = 'urls.txt'
 
-# Process URLs and write results
-results = process_urls(input_file)
-write_results_to_csv(results, output_file)
-print("Completed. Results have been written to 'waf_detection_results.csv'.")
+    if not os.path.isfile(input_file):
+        print(f"Error: File '{input_file}' not found.")
+        show_help()
+        sys.exit(1)
+
+    # Output file
+    output_file = 'waf_detection_results.csv'
+
+    # Process URLs and write results
+    results = process_urls(input_file)
+    write_results_to_csv(results, output_file)
+    print("Completed. Results have been written to 'waf_detection_results.csv'.")
